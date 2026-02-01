@@ -24,6 +24,9 @@
     note : this is rn input driven : ie like editor is waiting for first byte to enter loop
 */
 
+/*
+    need to fix : reading existing files has bugs where the visible cursor and text inputed does not match the editor cursor
+*/
 
 struct termios orig;
 
@@ -42,9 +45,40 @@ void enableRawMode() {
     atexit(disableRawMode); // restore when program exits
 }
 
+int main_menu(char *filename) {
+    printf("Enter 1 to Create a new file. \nEnter 2 to Open an existing file.");
+
+    int choice = 0;
+
+    scanf("%d", &choice); //takes input with new line
+    getchar(); //removes new line 
+
+    if (choice == 1) {
+        printf("Enter file name : ");
+        fgets(filename, 256, stdin);
+        filename[strcspn(filename, "\n")] = 0; // removing new line char cuz fget keeps it, strcspn finds index
+        return choice;
+        
+    }
+    else if (choice == 2) {
+        printf("Enter existing file name : ");
+        fgets(filename, 256, stdin);
+        filename[strcspn(filename, "\n")] = 0;
+        return choice;
+    }
+    else {
+        printf("error");
+        return choice;
+
+    }
+
+}
+
+
 int main(int argc, char *argv[]) {
 
     struct winsize w;
+    int choice;
 
     //gettign screen size
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1){
@@ -55,20 +89,24 @@ int main(int argc, char *argv[]) {
     int last_row = w.ws_row;
     int last_column = w.ws_col;
 
-    char *filename = argv[1];
+    char filename[256];
 
-    enableRawMode();
+    if (argc >= 2) {
+        strcpy(filename, argv[1]);
+    }
+
+    else {
+        choice = main_menu(filename);
+    }
+
+    int l; //length of contents of file (used for file buffer)
 
     FILE *fptr;
 
-    fptr = fopen(filename, "w");
-
-    if (fptr == NULL) {
-        printf("File Opening Error.");
-    }
+    l = 0;
 
     char line_buffer[10000];
-    int l = 0;
+    
     char c;
 
     int cursor_x = 0;
@@ -79,6 +117,28 @@ int main(int argc, char *argv[]) {
 
     // user inputs => x++, backspace => x--, enter key => y++ x=0
 
+    if (choice == 1) {
+        fptr = fopen(filename, "w");
+        l = 0;
+    }
+
+    if (choice == 2) {
+        
+        fptr = fopen(filename, "r");
+
+        while ((c = fgetc(fptr)) != EOF ) {
+            line_buffer[l++] = c;
+        }
+
+    }
+
+    if (fptr == NULL) {
+        printf("File Opening Error.");
+    }
+
+    fptr = fopen(filename, "w"); //reopening after reading 
+
+    enableRawMode();
 
     while (read(STDIN_FILENO, &c, 1) == 1) { // reads one byte, and no prinftscanf cuz we dont want buffering
 
@@ -166,6 +226,7 @@ int main(int argc, char *argv[]) {
         int row = cursor_y+1;
         int column = cursor_x+1; //terminal is 1 indexed
 
+        // status bar 
         char temp[100];
         sprintf(temp, "\x1b[%d;1H", last_row);
         write(STDOUT_FILENO, temp, strlen(temp));
