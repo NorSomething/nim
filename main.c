@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
 // ctrl + o to save = 15
 // ctrl + q to quit = 17?
@@ -42,6 +43,17 @@ void enableRawMode() {
 }
 
 int main(int argc, char *argv[]) {
+
+    struct winsize w;
+
+    //gettign screen size
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1){
+        perror("ioctrl");
+        return -1;
+    }
+
+    int last_row = w.ws_row;
+    int last_column = w.ws_col;
 
     char *filename = argv[1];
 
@@ -86,12 +98,13 @@ int main(int argc, char *argv[]) {
                     cursor_y--; //up arrow
             }
 
-            if (sq1 == 91 && sq2 == 66)
+            if (sq1 == 91 && sq2 == 66) {
                 cursor_y++; //down arrow
                 line_buffer[l++] = '\n';
                 
                 for (int i = 0; i < cursor_x; i++)
                     line_buffer[l++] = ' ';
+            }
 
             if (sq1 == 91 && sq2 == 68){
                 if (cursor_x > 0)
@@ -105,17 +118,12 @@ int main(int argc, char *argv[]) {
             
         }
 
-                //block at the end so as to not clear the entire screen cuz of continue ka working
         if (c == 127 || c == 8) { // backspace
 
             if (l > 0) l--;
             cursor_x--;
             
         }
-
-        //write(STDOUT_FILENO, "@", 1);
-
-        // if (c >= 65)
 
         if (c == 17) {
 
@@ -155,14 +163,21 @@ int main(int argc, char *argv[]) {
             // model updates and rendering must be separate.
         }
 
-
         int row = cursor_y+1;
         int column = cursor_x+1; //terminal is 1 indexed
+
+        char temp[100];
+        sprintf(temp, "\x1b[%d;1H", last_row);
+        write(STDOUT_FILENO, temp, strlen(temp));
+        char tt[100];
+        sprintf(tt, "Row : %d || Column : %d || %s", row, column, filename);
+        write(STDOUT_FILENO, tt, strlen(tt));
 
         //moving cursor
         char buff[100];
         sprintf(buff, "\x1b[%d;%dH", row, column); //only writes to memroy
         write(STDOUT_FILENO, buff, strlen(buff)); //drawing buffer
+
 
 
     }
