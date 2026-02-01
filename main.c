@@ -88,6 +88,10 @@ int main(int argc, char *argv[]) {
 
             if (sq1 == 91 && sq2 == 66)
                 cursor_y++; //down arrow
+                line_buffer[l++] = '\n';
+                
+                for (int i = 0; i < cursor_x; i++)
+                    line_buffer[l++] = ' ';
 
             if (sq1 == 91 && sq2 == 68){
                 if (cursor_x > 0)
@@ -96,6 +100,8 @@ int main(int argc, char *argv[]) {
 
             if (sq1 == 91 && sq2 == 67)
                 cursor_x++; //right arrow
+
+
             
         }
 
@@ -116,6 +122,13 @@ int main(int argc, char *argv[]) {
             fclose(fptr);
             break;   // ctrl+q quits
 
+        }
+
+        if (c == 13 || c == 10) { // enter key
+            cursor_y++;
+            cursor_x=0;
+            line_buffer[l++] = '\n';
+            
         }
 
 
