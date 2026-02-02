@@ -55,7 +55,7 @@ int main_menu(char *filename) {
         
     }
     else if (choice == 2) {
-        printf("Enter existing file name : ");
+        printf("Press Ctrl+O to load the file once inside the editor. \nEnter existing file name : ");
         fgets(filename, 256, stdin);
         filename[strcspn(filename, "\n")] = 0;
         return choice;
@@ -136,20 +136,19 @@ int main(int argc, char *argv[]) {
 
         line_buffer[l] = '\0';
 
-        int c = 0; //temp counter
+        int tc = 0; //temp counter
 
         for (int i = 0; i < l; i++) {
             if (line_buffer[i] == '\n')
-                c++;
+                tc++;
         }
 
         if (l > 0 && line_buffer[l-1] == '\n') { 
-            cursor_y = (c-1);
+            cursor_y = tc;
             cursor_x = 0;
         }
         else {
-            cursor_x = l;
-            cursor_y = 0;
+            cursor_x = 0;
         }
         
 
@@ -205,8 +204,11 @@ int main(int argc, char *argv[]) {
                     cursor_x--; //left arrow
             }
 
-            if (sq1 == 91 && sq2 == 67)
+            if (sq1 == 91 && sq2 == 67) {
                 cursor_x++; //right arrow
+                line_buffer[l++] = ' ';
+
+            }
 
 
             
