@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <time.h>
+#include <sys/stat.h> //for getting last time file saved data
 
 // ctrl + o to save = 15
 // ctrl + q to quit = 17?
@@ -26,6 +28,7 @@
 
 /*
     need to fix : reading existing files has bugs where the visible cursor and text inputed does not match the editor cursor
+                  
 */
 
 struct termios orig;
@@ -79,6 +82,7 @@ int main(int argc, char *argv[]) {
 
     struct winsize w;
     int choice;
+    struct stat status; //for getting last time written
 
     //gettign screen size
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1){
@@ -101,6 +105,8 @@ int main(int argc, char *argv[]) {
 
     int l; //length of contents of file (used for file buffer)
 
+    char time_buffer[100];
+
     FILE *fptr;
 
     l = 0;
@@ -120,6 +126,8 @@ int main(int argc, char *argv[]) {
     if (choice == 1) {
         fptr = fopen(filename, "w");
         l = 0;
+        strcpy(time_buffer, "Not Saved Yet.");
+        
     }
 
     if (choice == 2) {
@@ -130,13 +138,26 @@ int main(int argc, char *argv[]) {
             line_buffer[l++] = c;
         }
 
+        if (line_buffer[l] == '\n') {
+            cursor_y = l;
+            cursor_x = 0;
+        }
+        else {
+            cursor_x = l;
+            cursor_y = 0;
+        }
+
+        fstat(fileno(fptr), &status);
+        strcpy(time_buffer, ctime(&status.st_ctime));
+        
+
     }
 
     if (fptr == NULL) {
         printf("File Opening Error.");
     }
 
-    fptr = fopen(filename, "w"); //reopening after reading 
+    // fptr = fopen(filename, "w"); //reopening after reading 
 
     enableRawMode();
 
@@ -202,8 +223,20 @@ int main(int argc, char *argv[]) {
 
 
         if (c == 15) {
+
+            fptr = fopen(filename, "w");
+
             fwrite(line_buffer, 1, l, fptr);// fputs wants null ternimated string but we need raw bytes?
             fflush(fptr);
+
+            //getting time data
+            time_t now = time(NULL);
+            struct tm *t = localtime(&now);
+            char temp2[50];
+            strftime(temp2, sizeof(temp2), "%d-%m-%Y %H:%M:%S", t);
+            // strftime(time_buffer, sizeof(time_buffer), "%d-%m-%Y %H:%M:%S", t);
+            strcpy(time_buffer, temp2);
+
         }
 
 
@@ -216,7 +249,8 @@ int main(int argc, char *argv[]) {
         }
 
         //looping over buffer
-        for (int i = 0; i < l; i++) {
+        for (int i = 0; i < l; i++) { 
+
             write(STDOUT_FILENO, &line_buffer[i], 1);
             // cursor_x++; this is wrong because im moving editor cursor by 'l' lengths everytime i enter something
             // this is handled by the moving cursor part 
@@ -230,8 +264,9 @@ int main(int argc, char *argv[]) {
         char temp[100];
         sprintf(temp, "\x1b[%d;1H", last_row);
         write(STDOUT_FILENO, temp, strlen(temp));
-        char tt[100];
-        sprintf(tt, "Row : %d || Column : %d || %s", row, column, filename);
+        char tt[1000];
+        
+        sprintf(tt, "Row : %d || Column : %d || %s || Last Saved Time : %s", row, column, filename, time_buffer);
         write(STDOUT_FILENO, tt, strlen(tt));
 
         //moving cursor
@@ -244,8 +279,8 @@ int main(int argc, char *argv[]) {
     }
 
     disableRawMode();
-    printf("%d\n", cursor_y);
-    printf("%d", cursor_x);
+    //printf("%d\n", cursor_y);
+    //printf("%d", cursor_x);
     
 
     return 0;
