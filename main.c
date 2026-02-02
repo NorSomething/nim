@@ -17,19 +17,10 @@
 // entire screen erase = 27 91 50 74
 // cursor home = 27 91 27
 
-
-/* 
-    todo : load already written files, cursor movements, status bar?, filename display, remove writing every keypress => redraw screen every time
-*/
-
 /*
     note : this is rn input driven : ie like editor is waiting for first byte to enter loop
 */
 
-/*
-    need to fix : reading existing files has bugs where the visible cursor and text inputed does not match the editor cursor
-                  
-*/
 
 struct termios orig;
 
@@ -134,6 +125,11 @@ int main(int argc, char *argv[]) {
         
         fptr = fopen(filename, "r");
 
+        if (fptr == NULL) {
+            printf("File not found.\n Exiting.. \n");
+            return 0;
+        }
+
         while ((c = fgetc(fptr)) != EOF ) {
             line_buffer[l++] = c;
         }
@@ -146,6 +142,7 @@ int main(int argc, char *argv[]) {
             cursor_x = l;
             cursor_y = 0;
         }
+        
 
         fstat(fileno(fptr), &status);
         strcpy(time_buffer, ctime(&status.st_ctime));
@@ -156,8 +153,6 @@ int main(int argc, char *argv[]) {
     if (fptr == NULL) {
         printf("File Opening Error.");
     }
-
-    // fptr = fopen(filename, "w"); //reopening after reading 
 
     enableRawMode();
 
@@ -201,9 +196,10 @@ int main(int argc, char *argv[]) {
 
         if (c == 127 || c == 8) { // backspace
 
-            if (l > 0) l--;
-            cursor_x--;
-            
+            if (l > 0) {
+                l--;
+                cursor_x--;
+            }
         }
 
         if (c == 17) {
@@ -234,7 +230,6 @@ int main(int argc, char *argv[]) {
             struct tm *t = localtime(&now);
             char temp2[50];
             strftime(temp2, sizeof(temp2), "%d-%m-%Y %H:%M:%S", t);
-            // strftime(time_buffer, sizeof(time_buffer), "%d-%m-%Y %H:%M:%S", t);
             strcpy(time_buffer, temp2);
 
         }
