@@ -134,8 +134,17 @@ int main(int argc, char *argv[]) {
             line_buffer[l++] = c;
         }
 
-        if (line_buffer[l] == '\n') {
-            cursor_y = l;
+        line_buffer[l] = '\0';
+
+        int c = 0; //temp counter
+
+        for (int i = 0; i < l; i++) {
+            if (line_buffer[i] == '\n')
+                c++;
+        }
+
+        if (l > 0 && line_buffer[l-1] == '\n') { 
+            cursor_y = (c-1);
             cursor_x = 0;
         }
         else {
@@ -146,7 +155,8 @@ int main(int argc, char *argv[]) {
 
         fstat(fileno(fptr), &status);
         strcpy(time_buffer, ctime(&status.st_ctime));
-        
+
+        fclose(fptr);
 
     }
 
@@ -155,6 +165,14 @@ int main(int argc, char *argv[]) {
     }
 
     enableRawMode();
+
+    //pre rendering stuff
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
+    for (int i = 0; i < l; i++) { 
+        write(STDOUT_FILENO, &line_buffer[i], 1);
+    }
+
 
     while (read(STDIN_FILENO, &c, 1) == 1) { // reads one byte, and no prinftscanf cuz we dont want buffering
 
@@ -199,6 +217,7 @@ int main(int argc, char *argv[]) {
             if (l > 0) {
                 l--;
                 cursor_x--;
+                line_buffer[l] = '\0';
             }
         }
 
@@ -240,6 +259,7 @@ int main(int argc, char *argv[]) {
             if (c >= 32 && c < 127) {//writable characters
                 line_buffer[l++] = c;
                 cursor_x++;
+                line_buffer[l] = '\0';
             }
         }
 
