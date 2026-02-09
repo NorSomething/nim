@@ -265,17 +265,37 @@ int main(int argc, char *argv[]) {
             }
         }
 
+        int line = 1;
+        int at_line_start = 1;
+
         //looping over buffer
         for (int i = 0; i < l; i++) { 
 
-            write(STDOUT_FILENO, &line_buffer[i], 1);
+            
             // cursor_x++; this is wrong because im moving editor cursor by 'l' lengths everytime i enter something
             // this is handled by the moving cursor part 
             // model updates and rendering must be separate.
+
+            // writing  out lines
+            if (at_line_start) {
+        
+                char ln[16];
+                int len = snprintf(ln, sizeof(ln), "%4d | ", line++);
+                write(STDIN_FILENO, ln, len);
+                at_line_start = 0;
+
+            }
+
+            write(STDOUT_FILENO, &line_buffer[i], 1);
+
+            if (line_buffer[i] == '\n') {
+                at_line_start = 1;
+            }
+
         }
 
         int row = cursor_y+1;
-        int column = cursor_x+1; //terminal is 1 indexed
+        int column = cursor_x+1 + 6; //terminal is 1 indexed, 6 is length of line number width
 
         // status bar 
         char temp[100];
