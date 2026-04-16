@@ -39,6 +39,25 @@ void enableRawMode() {
     atexit(disableRawMode); // restore when program exits
 }
 
+int get_index_from_cursor(char *buf, int len, int cx, int cy) {
+    
+    int x = 0, y = 0;
+
+    for (int i = 0; i < len; i++) {
+        if (y == cy && x == cx)
+            return i;
+
+        if (buf[i] == '\n') {
+            y++;
+            x = 0;
+        } else {
+            x++;
+        }
+    }
+
+    return len; 
+}
+
 int main_menu(char *filename) {
     printf("Enter 1 to Create a new file. \nEnter 2 to Open an existing file.");
 
@@ -62,6 +81,7 @@ int main_menu(char *filename) {
     }
     else {
         printf("error");
+        
         return choice;
 
     }
@@ -75,6 +95,8 @@ int main(int argc, char *argv[]) {
     int choice;
     struct stat status; //for getting last time written
 
+    int fptr_open = 0;
+
     //gettign screen size
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1){
         perror("ioctrl");
@@ -86,8 +108,11 @@ int main(int argc, char *argv[]) {
 
     char filename[256];
 
+    choice = 0;
+
     if (argc >= 2) {
         strcpy(filename, argv[1]);
+        choice = 2;
     }
 
     else {
@@ -193,10 +218,10 @@ int main(int argc, char *argv[]) {
 
             if (sq1 == 91 && sq2 == 66) {
                 cursor_y++; //down arrow
-                line_buffer[l++] = '\n';
+                // line_buffer[l++] = '\n';
                 
-                for (int i = 0; i < cursor_x; i++)
-                    line_buffer[l++] = ' ';
+                // for (int i = 0; i < cursor_x; i++)
+                //     line_buffer[l++] = ' ';
             }
 
             if (sq1 == 91 && sq2 == 68){
@@ -206,7 +231,7 @@ int main(int argc, char *argv[]) {
 
             if (sq1 == 91 && sq2 == 67) {
                 cursor_x++; //right arrow
-                line_buffer[l++] = ' ';
+                // line_buffer[l++] = ' ';
 
             }
 
@@ -217,15 +242,22 @@ int main(int argc, char *argv[]) {
         if (c == 127 || c == 8) { // backspace
 
             if (l > 0) {
-                l--;
-                cursor_x--;
+                int pos = get_index_from_cursor(line_buffer, l, cursor_x, cursor_y);
+
+                if (pos > 0) {
+                    memmove(&line_buffer[pos - 1], &line_buffer[pos], l - pos);
+                    l--;
+                    cursor_x--;
+                }
+                
                 line_buffer[l] = '\0';
             }
         }
 
         if (c == 17) {
 
-            fclose(fptr);
+            if (fptr_open)
+                fclose(fptr);
             break;   // ctrl+q quits
 
         }
@@ -241,7 +273,12 @@ int main(int argc, char *argv[]) {
 
         if (c == 15) {
 
+            if (fptr_open) 
+                fclose(fptr);
+
             fptr = fopen(filename, "w");
+
+            fptr_open = 1;
 
             fwrite(line_buffer, 1, l, fptr);// fputs wants null ternimated string but we need raw bytes?
             fflush(fptr);
@@ -259,8 +296,11 @@ int main(int argc, char *argv[]) {
         //buffer insertion at the very end    
         if (l < sizeof(line_buffer)) {
             if (c >= 32 && c < 127) {//writable characters
-                line_buffer[l++] = c;
+                int pos = get_index_from_cursor(line_buffer, l, cursor_x, cursor_y);
+                memmove(&line_buffer[pos + 1], &line_buffer[pos], l - pos); //move 1 step right
+                line_buffer[pos] = c;
                 cursor_x++;
+                l++;
                 line_buffer[l] = '\0';
             }
         }
@@ -281,7 +321,7 @@ int main(int argc, char *argv[]) {
         
                 char ln[16];
                 int len = snprintf(ln, sizeof(ln), "%4d | ", line++);
-                write(STDIN_FILENO, ln, len);
+                write(STDOUT_FILENO, ln, len);
                 at_line_start = 0;
 
             }
